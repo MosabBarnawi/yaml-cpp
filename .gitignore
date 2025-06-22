@@ -3,3 +3,7 @@ build/
 /bazel-*
 
 *.vcxproj*
+
+
+bin/
+bin-intermediate/
