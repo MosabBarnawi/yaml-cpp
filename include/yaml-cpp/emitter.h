@@ -65,6 +65,7 @@ class YAML_CPP_API Emitter {
   bool SetPostCommentIndent(std::size_t n);
   bool SetFloatPrecision(std::size_t n);
   bool SetDoublePrecision(std::size_t n);
+  bool SetShowTrailingZero(bool value);
   void RestoreGlobalModifiedSettings();
 
   // local setters
@@ -95,6 +96,7 @@ class YAML_CPP_API Emitter {
   void SetStreamablePrecision(std::stringstream&) {}
   std::size_t GetFloatPrecision() const;
   std::size_t GetDoublePrecision() const;
+  bool GetShowTrailingZero() const;
 
   void PrepareIntegralStream(std::stringstream& stream) const;
   void StartedScalar();
@@ -148,7 +150,7 @@ inline Emitter& Emitter::WriteIntegralType(T value) {
   PrepareNode(EmitterNodeType::Scalar);
 
   std::stringstream stream;
-  stream.imbue(std::locale("C"));
+  stream.imbue(std::locale::classic());
   PrepareIntegralStream(stream);
   stream << value;
   m_stream << stream.str();
@@ -166,7 +168,7 @@ inline Emitter& Emitter::WriteStreamable(T value) {
   PrepareNode(EmitterNodeType::Scalar);
 
   std::stringstream stream;
-  stream.imbue(std::locale("C"));
+  stream.imbue(std::locale::classic());
   SetStreamablePrecision<T>(stream);
 
   bool special = false;
@@ -187,8 +189,17 @@ inline Emitter& Emitter::WriteStreamable(T value) {
   }
 
   if (!special) {
-    stream << FpToString(value, stream.precision());
+    auto value_as_str = FpToString(value, static_cast<size_t>(stream.precision()));
+    if (GetShowTrailingZero()) {
+        bool isInScientificNotation = (value_as_str.find('e') != std::string::npos);
+        bool hasDot                 = (value_as_str.find('.') != std::string::npos);
+        if (!isInScientificNotation && !hasDot) {
+            value_as_str += ".0";
+        }
+    }
+    stream << value_as_str;
   }
+
   m_stream << stream.str();
 
   StartedScalar();
